@@ -25,7 +25,7 @@ So for example,
 Will convert README.md to html. Also you can run it from the command line,
 like so,
 
-`lein run -m endophile.core README.md`
+`lein run -m endophile.core README.md > README.html`
 
 It wouldn't be too hard to create a similar function that returns hiccup-style
 vectors. See core.clj.
@@ -40,10 +40,3 @@ tables
 Copyright © 2013 Jonathan Brown
 
 Distributed under the Eclipse Public License, the same as Clojure.
-
- + a list
- + for some
- + reason
-     + also it is
-     + nested, see?
- + another item

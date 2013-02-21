@@ -6,13 +6,21 @@
             ExpLinkNode HeaderNode HtmlBlockNode InlineHtmlNode MailLinkNode
             OrderedListNode ParaNode QuotedNode QuotedNode$Type SimpleNode
             SimpleNode$Type SpecialTextNode StrongNode VerbatimNode]
-           [org.pegdown PegDownProcessor]))
+           [org.pegdown PegDownProcessor Extensions]))
 
- (defn mp [md] (.parseMarkdown (PegDownProcessor. 0x80) (char-array md)))
+ (defn mp [md] (.parseMarkdown
+                (PegDownProcessor. (int
+                                    (bit-or
+                                     Extensions/AUTOLINKS
+                                     Extensions/FENCED_CODE_BLOCKS)))
+                (char-array md)))
 
 ;; rendering
 ;; TODO references, abbreviations, tables
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Methods return clojure representation of HTML nodes
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defprotocol AstToClj
   (to-clj [node]))
 
@@ -122,7 +130,7 @@
 (extend-type VerbatimNode AstToClj
   (to-clj [node]
     {:tag :pre
-     :content '({:tag :code :content (.getText node)})}))
+     :content (list {:tag :code :content (.getText node)})}))
 
 (extend-type StrongNode AstToClj
   (to-clj [node] {:tag :strong
@@ -133,4 +141,11 @@
 ;; main function
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn -main [file]
-  (println (apply str (html/emit* (to-clj (mp (slurp file)))))))
+  (println (apply str
+            (html/emit* {:tag :html
+                         :content
+                         (list
+                          {:tag :head :content
+                           (list {:tag :meta :attrs {:charset "utf-8"}})}
+                          {:tag :body
+                           :content (to-clj (mp (slurp file)))})}))))
