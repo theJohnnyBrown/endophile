@@ -4,6 +4,8 @@ A Clojure markdown parsing tool wrapping the java pegdown library. It is designe
 
 ## Usage
 
+In project.clj, `:dependencies [[endophile "0.1.0"] ...]`
+
 `endophile.core/md` takes a markdown string, and returns an
 `org.pegdown.ast.RootNode`, the root of the document's parse tree.
 `endophile.core/to-clj` converts a `RootNode` into a clojure data structure.
