@@ -29,8 +29,7 @@ like so,
 
 `lein run -m endophile.core README.md > README.html`
 
-It wouldn't be too hard to create a similar function that returns hiccup-style
-vectors. See core.clj.
+There is also an implementation that returns hiccup-style vectors. See hiccup.clj.
 
 ## TODO
 
