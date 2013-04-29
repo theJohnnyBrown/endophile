@@ -132,11 +132,6 @@
     {:tag :pre
      :content (list {:tag :code :content (.getText node)})}))
 
-(extend-type StrongNode AstToClj
-  (to-clj [node] {:tag :strong
-                  :content (clj-contents node)}))
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; main function
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
