@@ -1,11 +1,13 @@
 (ns endophile.core
   (:require [net.cgrand.enlive-html :as html])
+  (:use clojure.pprint)
   (:import [org.pegdown.ast
-            RootNode BulletListNode ListItemNode SuperNode TextNode
+            RootNode BulletListNode ListItemNode SuperNode TextNode RefLinkNode
             AutoLinkNode BlockQuoteNode CodeNode TextNode EmphNode ExpImageNode
             ExpLinkNode HeaderNode HtmlBlockNode InlineHtmlNode MailLinkNode
             OrderedListNode ParaNode QuotedNode QuotedNode$Type SimpleNode
-            SimpleNode$Type SpecialTextNode StrongNode VerbatimNode]
+            SimpleNode$Type SpecialTextNode StrongNode VerbatimNode
+            ReferenceNode]
            [org.pegdown PegDownProcessor Extensions]))
 
  (defn mp [md] (.parseMarkdown
@@ -21,25 +23,31 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Methods return clojure representation of HTML nodes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(declare ^:dynamic *references*)
+
 (defprotocol AstToClj
   (to-clj [node]))
 
 (defn clj-contents [node]
-  (flatten (map to-clj (seq (.getChildren node)))))
+  (doall (flatten (map to-clj (seq (.getChildren node))))))
 
 (extend-type SuperNode AstToClj
   (to-clj [node] (clj-contents node)))
 
 (extend-type RootNode AstToClj
-  (to-clj [node] (clj-contents node)))
+  (to-clj [node]
+    (binding [*references*
+              (into {}
+                    (for [ref (.getReferences node)]
+                      [(first (clj-contents ref)) ref]))]
+     (clj-contents node))))
 
 (extend-type BulletListNode AstToClj
   (to-clj [node] {:tag :ul
                   :content (clj-contents node)}))
 
 (extend-type ListItemNode AstToClj
-  (to-clj [node] {:tag :li :content (flatten
-                                     (map to-clj (seq (.getChildren node))))}))
+  (to-clj [node] {:tag :li :content (clj-contents node)}))
 
 (extend-type TextNode AstToClj
   (to-clj [node] (.getText node)))
@@ -132,15 +140,66 @@
     {:tag :pre
      :content (list {:tag :code :content (.getText node)})}))
 
+(extend-type RefLinkNode AstToClj
+  (to-clj [node]
+    (let [contents (clj-contents node)
+          key (if-let [nd (.referenceKey node)]
+                (first (to-clj nd)) (apply str contents))]
+     (if-let [ref (*references* key)]
+       {:tag :a :attrs (into {}
+                         (filter #(% 1)
+                                 [[:href (.getUrl ref)]
+                                  [:title (.getTitle ref)]]))
+        :content contents}
+       (cons "[" (concat contents
+                         (if (.separatorSpace node)
+                             [(str "]"
+                                   (.separatorSpace node)
+                                   "[" (.referenceKey node) "]")]
+                             ["]"])))))))
+
+(extend-type ReferenceNode AstToClj
+  (to-clj [node]
+    ""))
+
+(defn to-html [parsed]
+  (apply str
+    (html/emit* {:tag :html
+                 :content
+                 (list
+                  {:tag :head :content
+                   (list {:tag :meta :attrs {:charset "utf-8"}})}
+                  {:tag :body
+                   :content (to-clj parsed)})})))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; main function
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn -main [file]
-  (println (apply str
-            (html/emit* {:tag :html
-                         :content
-                         (list
-                          {:tag :head :content
-                           (list {:tag :meta :attrs {:charset "utf-8"}})}
-                          {:tag :body
-                           :content (to-clj (mp (slurp file)))})}))))
+  (println (to-html (mp (slurp file)))))
+
+;; (defn crn [nd] (.getChildren nd))
+;; (defn txt [nd ] (.getText nd))
+;; (defn bound-clj [node]
+;;       (binding [*references* refs]
+;;         (to-clj node)))
+(def parsed (mp (slurp "test/resources/Links, reference style.text")))
+;; (-> parsed
+;;     crn
+;;     (nth 4)
+;;     crn
+;;     first
+;;     crn
+;;     (nth 1)
+;;     bound-clj
+;;     ;; crn
+;;     ;; first
+;;     ;; crn
+;;     ;; (nth 1)
+;;     ;; crn
+
+
+
+
+;;     )
