@@ -1,5 +1,6 @@
 (ns endophile.core
-  (:require [net.cgrand.enlive-html :as html])
+  (:require [net.cgrand.enlive-html :as html]
+            [clojure.string :as str])
   (:use clojure.pprint)
   (:import [org.pegdown.ast
             RootNode BulletListNode ListItemNode SuperNode TextNode RefLinkNode
@@ -8,7 +9,9 @@
             OrderedListNode ParaNode QuotedNode QuotedNode$Type SimpleNode
             SimpleNode$Type SpecialTextNode StrongNode VerbatimNode
             ReferenceNode]
-           [org.pegdown PegDownProcessor Extensions]))
+           [org.pegdown PegDownProcessor Extensions]
+           [java.io StringWriter StringReader]
+           [org.w3c.tidy Tidy]))
 
  (defn mp [md] (.parseMarkdown
                 (PegDownProcessor. (int
@@ -17,9 +20,20 @@
                                      Extensions/FENCED_CODE_BLOCKS)))
                 (char-array md)))
 
-;; rendering
-;; TODO references, abbreviations, tables
+(defn tidy [untidy]
+  (let [w (StringWriter.)]
+    (doto (Tidy.)
+      (.setTabsize 4)
+      (.setPrintBodyOnly true)
+      (.setShowWarnings false)
+      (.setQuiet true)
+      ;; this oddity prevents Tidy from returning a blank string when given
+      ;; a string containing only a comment.
+      (.parse (StringReader. (str "<p></p>" untidy "<p></p>")) w))
+    (str/replace (.toString w) "\r\n" "\n")))
 
+(defn a-attrs [mapping]
+  (into {} (filter (fn [[k v]] (or (not (str/blank? v)) (= k :href))) mapping)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Methods return clojure representation of HTML nodes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -50,11 +64,12 @@
   (to-clj [node] {:tag :li :content (clj-contents node)}))
 
 (extend-type TextNode AstToClj
-  (to-clj [node] (.getText node)))
+  ;; html-snippet converts entities back into text
+  (to-clj [node] (first (html/html-snippet (.getText node)))))
 
 (extend-type AutoLinkNode AstToClj
   (to-clj [node] {:tag :a
-                  :attrs {:href (.getText node)}
+                  :attrs (a-attrs {:href (.getText node)})
                   :content (.getText node)}))
 
 (extend-type BlockQuoteNode AstToClj
@@ -71,12 +86,13 @@
 
 (extend-type ExpImageNode AstToClj
   (to-clj [node] {:tag :img
-                  :attrs {:src (.url node) :title (.title node)
-                          :alt (clj-contents node)}}))
+                  :attrs (a-attrs
+                          {:src (.url node) :title (.title node)
+                           :alt (clj-contents node)})}))
 
 (extend-type ExpLinkNode AstToClj
   (to-clj [node] {:tag :a
-                  :attrs {:href (.url node) :title (.title node)}
+                  :attrs (a-attrs {:href (.url node) :title (.title node)})
                   :content (clj-contents node)}))
 
 (extend-type HeaderNode AstToClj
@@ -85,15 +101,16 @@
 
 
 (extend-type HtmlBlockNode AstToClj
-  (to-clj [node] (html/html-snippet (.getText node))))
+  (to-clj [node]
+    (html/html-snippet (tidy (.getText node)))))
 
 (extend-type InlineHtmlNode AstToClj
-  (to-clj [node] (html/html-snippet (.getText node))))
+  (to-clj [node] (html/html-snippet (tidy (.getText node)))))
 
 
 (extend-type MailLinkNode AstToClj
   (to-clj [node] {:tag :a
-                  :attrs {:href (str "mailto:" (.getText node))}
+                  :attrs (a-attrs {:href (str "mailto:" (.getText node))})
                   :content (clj-contents node)}))
 
 (extend-type OrderedListNode AstToClj
@@ -146,10 +163,7 @@
           key (if-let [nd (.referenceKey node)]
                 (first (to-clj nd)) (apply str contents))]
      (if-let [ref (*references* key)]
-       {:tag :a :attrs (into {}
-                         (filter #(% 1)
-                                 [[:href (.getUrl ref)]
-                                  [:title (.getTitle ref)]]))
+       {:tag :a :attrs (a-attrs {:href (.getUrl ref) :title (.getTitle ref)})
         :content contents}
        (cons "[" (concat contents
                          (if (.separatorSpace node)
