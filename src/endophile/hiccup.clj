@@ -1,11 +1,14 @@
 (ns endophile.hiccup
-  (:require [net.cgrand.enlive-html :as html])
+  (:require [net.cgrand.enlive-html :as html]
+            [clojure.string :as str])
+  (:use endophile.utils)
   (:import [org.pegdown.ast
-            RootNode BulletListNode ListItemNode SuperNode TextNode
+            RootNode BulletListNode ListItemNode SuperNode TextNode RefLinkNode
             AutoLinkNode BlockQuoteNode CodeNode TextNode EmphNode ExpImageNode
             ExpLinkNode HeaderNode HtmlBlockNode InlineHtmlNode MailLinkNode
             OrderedListNode ParaNode QuotedNode QuotedNode$Type SimpleNode
-            SimpleNode$Type SpecialTextNode StrongNode VerbatimNode]
+            SimpleNode$Type SpecialTextNode StrongNode VerbatimNode
+            ReferenceNode]
            [org.pegdown PegDownProcessor Extensions]))
 
 (defn- sequential-but-not-vector? [s]
@@ -16,79 +19,101 @@
   (filter (complement sequential-but-not-vector?)
           (rest (tree-seq sequential-but-not-vector? seq x))))
 
+(defn- clj2hiccup [clj-xml]
+  (if-let [tag (:tag clj-xml)]
+    [(keyword tag)
+     (:attrs clj-xml)
+     (clj2hiccup (:content clj-xml))]
+    (cond
+     (seq? clj-xml) (map clj2hiccup clj-xml)
+     (string? clj-xml) (xml-str clj-xml)
+     (= (:type clj-xml) :comment) (str "<!--" (:data clj-xml) "-->")
+     :else nil)))
+
+(defn- html-snippet [s]
+  (clj2hiccup (html/html-snippet s)))
+
+(declare ^:dynamic *references*)
+
 (defprotocol AstToHiccup
   (to-hiccup [node]))
 
 (defn clj-contents [node]
-  (flatten* (map to-hiccup (seq (.getChildren node)))))
+  (doall (flatten* (map to-hiccup (seq (.getChildren node))))))
 
 (extend-type SuperNode AstToHiccup
   (to-hiccup [node] (clj-contents node)))
 
 (extend-type RootNode AstToHiccup
-  (to-hiccup [node] (clj-contents node)))
+  (to-hiccup [node]
+    (binding [*references*
+              (into {}
+                    (for [ref (.getReferences node)]
+                      [(first (clj-contents ref)) ref]))]
+     (clj-contents node))))
 
 (extend-type BulletListNode AstToHiccup
   (to-hiccup [node] (vec (cons :ul (clj-contents node)))))
 
 (extend-type ListItemNode AstToHiccup
-  (to-hiccup [node] 
+  (to-hiccup [node]
     (vec (cons :li (flatten* (map to-hiccup (seq (.getChildren node))))))))
 
 (extend-type TextNode AstToHiccup
-  (to-hiccup [node] (.getText node)))
+  (to-hiccup [node] (xml-str (.getText node))))
 
 (extend-type AutoLinkNode AstToHiccup
-  (to-hiccup [node] 
-    [:a {:href (.getText node)} (.getText node)]))
+  (to-hiccup [node]
+    [:a {:href (.getText node)}
+     (xml-str (.getText node))]))
 
 (extend-type BlockQuoteNode AstToHiccup
-  (to-hiccup [node] 
+  (to-hiccup [node]
     (vec (cons :blockquote (clj-contents node)))))
 
 (extend-type CodeNode AstToHiccup
-  (to-hiccup [node] 
-    [:code (.getText node)]))
+  (to-hiccup [node]
+    [:code (verbatim-xml-str (.getText node))]))
 
 (extend-type EmphNode AstToHiccup
-  (to-hiccup [node] 
+  (to-hiccup [node]
     (vec (cons :em (clj-contents node)))))
 
 (extend-type ExpImageNode AstToHiccup
-  (to-hiccup [node] 
+  (to-hiccup [node]
     [:img {:src (.url node) :title (.title node) :alt (clj-contents node)}]))
 
 (extend-type ExpLinkNode AstToHiccup
-  (to-hiccup [node] 
+  (to-hiccup [node]
     (vec
      (concat
-      [:a {:href (.url node) :title (.title node)}]
+      [:a (a-attrs {:href (.url node) :title (.title node)})]
       (clj-contents node)))))
 
 (extend-type HeaderNode AstToHiccup
-  (to-hiccup [node] 
-    (vec (cons (keyword (str "h" (.getLevel node))) 
+  (to-hiccup [node]
+    (vec (cons (keyword (str "h" (.getLevel node)))
                (clj-contents node)))))
 
 (extend-type HtmlBlockNode AstToHiccup
-  (to-hiccup [node] 
-    (html/html-snippet (.getText node))))
+  (to-hiccup [node]
+    (html-snippet (tidy (.getText node)))))
 
 (extend-type InlineHtmlNode AstToHiccup
-  (to-hiccup [node] 
-    (html/html-snippet (.getText node))))
+  (to-hiccup [node]
+    (html-snippet (tidy (.getText node)))))
 
 (extend-type MailLinkNode AstToHiccup
-  (to-hiccup [node] 
+  (to-hiccup [node]
     (vec (concat [:a {:href (str "mailto:" (.getText node))}]
                  (clj-contents node)))))
 
 (extend-type OrderedListNode AstToHiccup
-  (to-hiccup [node] 
+  (to-hiccup [node]
     (vec (cons :ol (clj-contents node)))))
 
 (extend-type ParaNode AstToHiccup
-  (to-hiccup [node] 
+  (to-hiccup [node]
     (vec (cons :p (clj-contents node)))))
 
 (def qts
@@ -97,7 +122,7 @@
    QuotedNode$Type/Single [\u2018 \u2019]})
 
 (extend-type QuotedNode AstToHiccup
-  (to-hiccup [node] 
+  (to-hiccup [node]
     (vec (cons :p (flatten*
                    (let [q (qts (.getType node))]
                      (list (q 0) (clj-contents node) (q 1))))))))
@@ -107,21 +132,38 @@
    SimpleNode$Type/Ellipsis \u2026
    SimpleNode$Type/Emdash \u2014
    SimpleNode$Type/Endash \u2013
-   SimpleNode$Type/HRule {:tag :hr}
-   SimpleNode$Type/Linebreak {:tag :br}
+   SimpleNode$Type/HRule [:hr ]
+   SimpleNode$Type/Linebreak [:br ]
    SimpleNode$Type/Nbsp \u00A0})
 
 (extend-type SimpleNode AstToHiccup
   (to-hiccup [node] (simple-nodes (.getType node))))
 
 (extend-type SpecialTextNode AstToHiccup
-  (to-hiccup [node] (.getText node)))
+  (to-hiccup [node] (xml-str (.getText node))))
 
 (extend-type StrongNode AstToHiccup
-  (to-hiccup [node] 
+  (to-hiccup [node]
     (vec (cons :strong (clj-contents node)))))
 
 (extend-type VerbatimNode AstToHiccup
   (to-hiccup [node]
-    (vec (cons :pre (list {:tag :code :content (.getText node)})))))
+    [:pre [:code (verbatim-xml-str (.getText node))]]))
 
+(extend-type RefLinkNode AstToHiccup
+  (to-hiccup [node]
+    (let [contents (clj-contents node)
+          key (if-let [nd (.referenceKey node)]
+                (str/join (to-hiccup nd)) (str/join contents))]
+     (if-let [ref (*references* key)]
+       [:a (a-attrs {:href (.getUrl ref) :title (.getTitle ref)}) contents]
+       (cons "[" (concat contents
+                         (if (.separatorSpace node)
+                             [(str "]"
+                                   (.separatorSpace node)
+                                   "[" (.referenceKey node) "]")]
+                             ["]"])))))))
+
+(extend-type ReferenceNode AstToHiccup
+  (to-hiccup [node]
+    nil))

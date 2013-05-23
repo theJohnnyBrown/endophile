@@ -1,7 +1,8 @@
 (ns endophile.core
   (:require [net.cgrand.enlive-html :as html]
             [clojure.string :as str])
-  (:use clojure.pprint)
+  (:use clojure.pprint
+        endophile.utils)
   (:import [org.pegdown.ast
             RootNode BulletListNode ListItemNode SuperNode TextNode RefLinkNode
             AutoLinkNode BlockQuoteNode CodeNode TextNode EmphNode ExpImageNode
@@ -9,9 +10,7 @@
             OrderedListNode ParaNode QuotedNode QuotedNode$Type SimpleNode
             SimpleNode$Type SpecialTextNode StrongNode VerbatimNode
             ReferenceNode]
-           [org.pegdown PegDownProcessor Extensions]
-           [java.io StringWriter StringReader]
-           [org.w3c.tidy Tidy]))
+           [org.pegdown PegDownProcessor Extensions]))
 
  (defn mp [md] (.parseMarkdown
                 (PegDownProcessor. (int
@@ -20,20 +19,7 @@
                                      Extensions/FENCED_CODE_BLOCKS)))
                 (char-array md)))
 
-(defn tidy [untidy]
-  (let [w (StringWriter.)]
-    (doto (Tidy.)
-      (.setTabsize 4)
-      (.setPrintBodyOnly true)
-      (.setShowWarnings false)
-      (.setQuiet true)
-      ;; this oddity prevents Tidy from returning a blank string when given
-      ;; a string containing only a comment.
-      (.parse (StringReader. (str "<p></p>" untidy "<p></p>")) w))
-    (str/replace (.toString w) "\r\n" "\n")))
 
-(defn a-attrs [mapping]
-  (into {} (filter (fn [[k v]] (or (not (str/blank? v)) (= k :href))) mapping)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Methods return clojure representation of HTML nodes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -70,7 +56,7 @@
 (extend-type AutoLinkNode AstToClj
   (to-clj [node] {:tag :a
                   :attrs (a-attrs {:href (.getText node)})
-                  :content (.getText node)}))
+                  :content (list (.getText node))}))
 
 (extend-type BlockQuoteNode AstToClj
   (to-clj [node] {:tag :blockquote
@@ -78,7 +64,7 @@
 
 (extend-type CodeNode AstToClj
   (to-clj [node] {:tag :code
-                  :content (.getText node)}))
+                  :content (list (.getText node))}))
 
 (extend-type EmphNode AstToClj
   (to-clj [node] {:tag :em
@@ -155,7 +141,7 @@
 (extend-type VerbatimNode AstToClj
   (to-clj [node]
     {:tag :pre
-     :content (list {:tag :code :content (.getText node)})}))
+     :content (list {:tag :code :content (list (.getText node))})}))
 
 (extend-type RefLinkNode AstToClj
   (to-clj [node]
@@ -176,15 +162,18 @@
   (to-clj [node]
     ""))
 
+(defn html-string [clj-md]
+  (str/join (html/emit* clj-md)))
+
 (defn to-html [parsed]
-  (apply str
-    (html/emit* {:tag :html
-                 :content
-                 (list
-                  {:tag :head :content
-                   (list {:tag :meta :attrs {:charset "utf-8"}})}
-                  {:tag :body
-                   :content (to-clj parsed)})})))
+  (html-string
+   {:tag :html
+      :content
+      (list
+       {:tag :head :content
+        (list {:tag :meta :attrs {:charset "utf-8"}})}
+       {:tag :body
+        :content (to-clj parsed)})}))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -192,28 +181,3 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn -main [file]
   (println (to-html (mp (slurp file)))))
-
-;; (defn crn [nd] (.getChildren nd))
-;; (defn txt [nd ] (.getText nd))
-;; (defn bound-clj [node]
-;;       (binding [*references* refs]
-;;         (to-clj node)))
-(def parsed (mp (slurp "test/resources/Links, reference style.text")))
-;; (-> parsed
-;;     crn
-;;     (nth 4)
-;;     crn
-;;     first
-;;     crn
-;;     (nth 1)
-;;     bound-clj
-;;     ;; crn
-;;     ;; first
-;;     ;; crn
-;;     ;; (nth 1)
-;;     ;; crn
-
-
-
-
-;;     )
