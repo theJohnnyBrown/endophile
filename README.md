@@ -1,6 +1,10 @@
 # endophile
 
-A Clojure markdown parsing tool wrapping the java pegdown library. It is designed to convert markdown into clojure data structures, which can then be used to generate HTML through another library, such as enlive or hiccup.
+[![Build Status](https://secure.travis-ci.org/theJohnnyBrown/endophile.png)](http://travis-ci.org/theJohnnyBrown/endophile)
+
+A Clojure markdown parsing tool wrapping java's [pegdown](https://github.com/sirthias/pegdown) library. It is designed to convert markdown into clojure data structures, which can then be used to generate HTML through another library, such as enlive or hiccup.
+
+Endophile fully passes the original markdown test suite.
 
 ## Usage
 
@@ -13,14 +17,20 @@ Currently it returns nodes as used in `clojure.xml` and in the enlive HTML libra
 
 So for example,
 
-```
+```clojure
 (ns my-namespace
-  (:use [endophile.core :only [mp to-clj]]
-        [net.cgrand.enlive-html :only [emit*]]))
+  (:use [endophile.core :only [mp to-clj html-string]]
+        [endophile.hiccup :only [to-hiccup]]
+        [hiccup.core :only [html]]))
 
-(def parsed (to-clj (mp (slurp "README.md"))))
+;; parsed is an org.pegdown.RootNode
+(def parsed (mp (slurp "README.md")))
 
-(println (apply str (emit* parsed)))
+;; convert to html using clojure.xml and enlive
+(println (html-string (to-clj parsed)))
+
+;; convert to html using hiccup
+(println (html (to-hiccup parsed)))
 
 ```
 
@@ -33,8 +43,7 @@ There is also an implementation that returns hiccup-style vectors. See hiccup.cl
 
 ## TODO
 
-Currently does not support reference-style links or images, abbreviations, or
-tables
+Currently does not support the full complement of extensions available through pegdown. Pull requests are encouraged.
 
 ## License
 
