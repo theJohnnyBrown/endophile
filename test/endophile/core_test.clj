@@ -36,3 +36,8 @@
       (str/trim (tidy (html (md2h/to-hiccup (mp (slurp md-file))))))
       (str/trim (tidy (slurp html-file))))
      (str "Testing hiccup: " md-file))))
+
+(deftest test-img-tag
+  (let [parsed (mp "![alt text](/image/url \"image title\")")
+        result (to-clj parsed)]
+    (is (= result [{:tag :p :content [{:tag :img :attrs {:src "/image/url" :alt "alt text" :title "image title"}}]}]))))

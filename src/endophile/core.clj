@@ -73,8 +73,9 @@
 (extend-type ExpImageNode AstToClj
   (to-clj [node] {:tag :img
                   :attrs (a-attrs
-                          {:src (.url node) :title (.title node)
-                           :alt (clj-contents node)})}))
+                          {:src (.url node)
+                           :title (.title node)
+                           :alt (str/join (clj-contents node))})}))
 
 (extend-type ExpLinkNode AstToClj
   (to-clj [node] {:tag :a
