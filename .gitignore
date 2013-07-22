@@ -11,4 +11,5 @@ pom.xml
 .lein-repl-history
 .classpath
 .project
+.settings
 
