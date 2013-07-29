@@ -1,4 +1,4 @@
-(defproject endophile "0.1.0"
+(defproject endophile "0.1.1"
   :description "See README.md"
   :url "https://github.com/theJohnnyBrown/endophile/"
   :license {:name "Eclipse Public License"
