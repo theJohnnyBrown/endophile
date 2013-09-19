@@ -8,7 +8,7 @@ Endophile fully passes the original markdown test suite.
 
 ## Usage
 
-In project.clj, `:dependencies [[endophile "0.1.0"] ...]`
+In project.clj, `:dependencies [[endophile "0.1.2"] ...]`
 
 `endophile.core/md` takes a markdown string, and returns an
 `org.pegdown.ast.RootNode`, the root of the document's parse tree.
