@@ -41,3 +41,12 @@
   (let [parsed (mp "![alt text](/image/url \"image title\")")
         result (to-clj parsed)]
     (is (= result [{:tag :p :content [{:tag :img :attrs {:src "/image/url" :alt "alt text" :title "image title"}}]}]))))
+
+(deftest test-reference-style-link-inside-list
+  (is (= (to-clj (mp "* List [item][]\n\n[item]: link"))
+         [{:tag :ul,
+           :content
+           [{:tag :li,
+             :content
+             ["List " {:tag :a, :attrs {:href "link"}, :content ["item"]}]}]}
+          ""])))

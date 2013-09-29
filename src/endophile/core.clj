@@ -36,11 +36,13 @@
 
 (extend-type RootNode AstToClj
   (to-clj [node]
-    (binding [*references*
-              (into {}
-                    (for [ref (.getReferences node)]
-                      [(first (clj-contents ref)) ref]))]
-     (clj-contents node))))
+    (if (bound? #'*references*)
+      (clj-contents node)
+      (binding [*references*
+                (into {}
+                      (for [ref (.getReferences node)]
+                        [(first (clj-contents ref)) ref]))]
+        (clj-contents node)))))
 
 (extend-type BulletListNode AstToClj
   (to-clj [node] {:tag :ul
