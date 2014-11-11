@@ -1,0 +1,15 @@
+~~~
+(comment tilde-deliminated fenced code block without syntax hint)
+~~~
+
+~~~clojure
+(comment tilde-deliminated fenced code block with syntax hint)
+~~~
+
+```
+(comment backtick-deliminated fenced code block without syntax hint)
+```
+
+```clojure
+(comment backtick-deliminated fenced code block with syntax hint)
+```

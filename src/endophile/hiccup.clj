@@ -148,7 +148,12 @@
 
 (extend-type VerbatimNode AstToHiccup
   (to-hiccup [node]
-    [:pre [:code (verbatim-xml-str (.getText node))]]))
+    [:pre [:code
+           (when-let [c (.getType node)]
+             (if-not (or (str/blank? c)
+                         (nil? c))
+               {:class c}))
+           (verbatim-xml-str (.getText node))]]))
 
 (extend-type RefLinkNode AstToHiccup
   (to-hiccup [node]

@@ -144,7 +144,12 @@
 (extend-type VerbatimNode AstToClj
   (to-clj [node]
     {:tag :pre
-     :content (list {:tag :code :content (list (.getText node))})}))
+     :content (list (merge {:tag :code
+                            :content (list (.getText node))}
+                           (when-let [c (.getType node)]
+                             (if-not (or (str/blank? c)
+                                         (nil? c))
+                               {:attrs {:class c}}))))}))
 
 (extend-type RefLinkNode AstToClj
   (to-clj [node]
