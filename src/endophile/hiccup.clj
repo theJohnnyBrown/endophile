@@ -81,7 +81,7 @@
 
 (extend-type ExpImageNode AstToHiccup
   (to-hiccup [node]
-    [:img {:src (.url node) :title (.title node) :alt (clj-contents node)}]))
+    [:img {:src (.url node) :title (.title node) :alt (apply str (clj-contents node))}]))
 
 (extend-type ExpLinkNode AstToHiccup
   (to-hiccup [node]
