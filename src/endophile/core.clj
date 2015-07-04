@@ -5,18 +5,19 @@
         endophile.utils)
   (:import [org.pegdown.ast
             RootNode BulletListNode ListItemNode SuperNode TextNode RefLinkNode
-            AutoLinkNode BlockQuoteNode CodeNode TextNode EmphNode ExpImageNode
+            AutoLinkNode BlockQuoteNode CodeNode TextNode ExpImageNode
             ExpLinkNode HeaderNode HtmlBlockNode InlineHtmlNode MailLinkNode
             OrderedListNode ParaNode QuotedNode QuotedNode$Type SimpleNode
-            SimpleNode$Type SpecialTextNode StrongNode VerbatimNode
-            ReferenceNode]
+            SimpleNode$Type SpecialTextNode StrongEmphSuperNode VerbatimNode
+            ReferenceNode StrikeNode]
            [org.pegdown PegDownProcessor Extensions]))
 
  (defn mp [md] (.parseMarkdown
                 (PegDownProcessor. (int
                                     (bit-or
                                      Extensions/AUTOLINKS
-                                     Extensions/FENCED_CODE_BLOCKS)))
+                                     Extensions/FENCED_CODE_BLOCKS
+                                     Extensions/STRIKETHROUGH)))
                 (char-array md)))
 
 
@@ -67,10 +68,6 @@
 (extend-type CodeNode AstToClj
   (to-clj [node] {:tag :code
                   :content (list (.getText node))}))
-
-(extend-type EmphNode AstToClj
-  (to-clj [node] {:tag :em
-                  :content (clj-contents node)}))
 
 (extend-type ExpImageNode AstToClj
   (to-clj [node] {:tag :img
@@ -137,9 +134,14 @@
 (extend-type SpecialTextNode AstToClj
   (to-clj [node] (.getText node)))
 
-(extend-type StrongNode AstToClj
-  (to-clj [node] {:tag :strong
+(extend-type StrongEmphSuperNode AstToClj
+  (to-clj [node] {:tag (if (.isStrong node) :strong :em)
                   :content (clj-contents node)}))
+
+(extend-type StrikeNode AstToClj
+  (to-clj [node]
+    {:tag :del
+     :content (clj-contents node)}))
 
 (extend-type VerbatimNode AstToClj
   (to-clj [node]
