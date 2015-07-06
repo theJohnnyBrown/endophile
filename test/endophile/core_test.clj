@@ -39,31 +39,32 @@
   (doseq [[md-file html-file] markdown-spec-files]
     (is
      (=
-      (str/trim (tidy (html-string (to-clj (mp (slurp md-file))))))
-      (str/trim (tidy (slurp html-file))))
+      (str/trim (tidy (slurp html-file)))
+      (str/trim (tidy (html-string (to-clj (mp (slurp md-file)))))))
      (str "Testing enlive: " md-file))))
 
 (deftest test-hiccup
   (doseq [[md-file html-file] markdown-spec-files]
     (is
      (parsed=
-      (str/trim (tidy (html (md2h/to-hiccup (mp (slurp md-file))))))
-      (str/trim (tidy (slurp html-file))))
+      (str/trim (tidy (slurp html-file)))
+      (str/trim (tidy (html (md2h/to-hiccup (mp (slurp md-file)))))))
      (str "Testing hiccup: " md-file))))
 
 (deftest test-img-tag
   (let [parsed (mp "![alt text](/image/url \"image title\")")
         result (to-clj parsed)]
-    (is (= result [{:tag :p :content [{:tag :img :attrs {:src "/image/url" :alt "alt text" :title "image title"}}]}]))))
+    (is (= [{:tag :p :content [{:tag :img :attrs {:src "/image/url" :alt "alt text" :title "image title"}}]}]
+           result))))
 
 (deftest test-reference-style-link-inside-list
-  (is (= (to-clj (mp "* List [item][]\n\n[item]: link"))
-         [{:tag :ul,
+  (is (= [{:tag :ul,
            :content
            [{:tag :li,
              :content
              ["List " {:tag :a, :attrs {:href "link"}, :content ["item"]}]}]}
-          ""])))
+          ""]
+         (to-clj (mp "* List [item][]\n\n[item]: link")))))
 
 (deftest mp-options
   (is (= [{:tag :p :content ["~" "~" "foo" "~" "~"]}]
