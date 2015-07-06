@@ -1,12 +1,12 @@
 (ns endophile.core-test
-  (:use clojure.test
-        clojure.java.io
-        endophile.core
-        endophile.utils
-        [hiccup.core :only [html]])
-  (:require [clojure.string :as str]
+  (:require [clojure.test :refer :all]
+            [clojure.java.io :as io]
+            [endophile.core :refer :all]
+            [hiccup.core :refer [html]]
+            [clojure.string :as str]
             [net.cgrand.enlive-html :as html]
-            [endophile.hiccup :as md2h])
+            [endophile.hiccup :as md2h]
+            [endophile.utils :refer :all])
   (:import [org.pegdown Extensions]))
 
 (def default-extensions (bit-or Extensions/AUTOLINKS Extensions/FENCED_CODE_BLOCKS Extensions/STRIKETHROUGH))
@@ -25,7 +25,7 @@
 (def test-files-dir "test/resources/")
 
 (def markdown-spec-files
-  (->> (file-seq (file test-files-dir))
+  (->> (file-seq (io/file test-files-dir))
        (map #(.getPath %))
        (filter #(re-find #"\.text$" %))
        (map (fn [path] [path (str/replace path #"\.text$" ".html")]))))

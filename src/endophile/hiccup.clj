@@ -1,7 +1,7 @@
 (ns endophile.hiccup
   (:require [net.cgrand.enlive-html :as html]
-            [clojure.string :as str])
-  (:use endophile.utils)
+            [clojure.string :as str]
+            [endophile.utils :refer :all])
   (:import [org.pegdown.ast
             RootNode BulletListNode ListItemNode SuperNode TextNode RefLinkNode
             AutoLinkNode BlockQuoteNode CodeNode TextNode ExpImageNode

@@ -18,9 +18,9 @@
       ;; a string containing only a comment.
       (.parse (StringReader. (str "<p></p>" untidy "<p></p>")) w))
     (-> (.toString w)
-     (str/replace  "\r\n" "\n")
-     (str/replace "\r" "\n")
-     (str/replace #"\n+" "\n"))))
+        (str/replace  "\r\n" "\n")
+        (str/replace "\r" "\n")
+        (str/replace #"\n+" "\n"))))
 
 (defn xml-str
  "escapes < > and &, while leaving html entities unchanged.
