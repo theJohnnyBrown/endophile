@@ -30,23 +30,20 @@
        (filter #(re-find #"\.text$" %))
        (map (fn [path] [path (str/replace path #"\.text$" ".html")]))))
 
-(defn parsed= [& html-strings]
-  (apply = (map html/html-snippet html-strings)))
-
 (deftest test-to-clj
   (doseq [[md-file html-file] markdown-spec-files]
     (is
      (=
-      (str/trim (tidy (slurp html-file)))
-      (str/trim (tidy (html-string (to-clj (mp (slurp md-file)))))))
+      (tidy (html/html-snippet (slurp html-file)))
+      (tidy (html/html-snippet (html-string (to-clj (mp (slurp md-file)))))))
      (str "Testing enlive: " md-file))))
 
 (deftest test-hiccup
   (doseq [[md-file html-file] markdown-spec-files]
     (is
-     (parsed=
-      (str/trim (tidy (slurp html-file)))
-      (str/trim (tidy (html (md2h/to-hiccup (mp (slurp md-file)))))))
+     (=
+      (tidy (html/html-snippet (slurp html-file)))
+      (tidy (html/html-snippet (html (md2h/to-hiccup (mp (slurp md-file)))))))
      (str "Testing hiccup: " md-file))))
 
 (deftest test-img-tag

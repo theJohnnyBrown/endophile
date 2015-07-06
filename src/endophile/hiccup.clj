@@ -92,11 +92,11 @@
 
 (extend-type HtmlBlockNode AstToHiccup
   (to-hiccup [node]
-    (html-snippet (tidy (.getText node)))))
+    (html-snippet (.getText node))))
 
 (extend-type InlineHtmlNode AstToHiccup
   (to-hiccup [node]
-    (html-snippet (tidy (.getText node)))))
+    (html-snippet (.getText node))))
 
 (extend-type MailLinkNode AstToHiccup
   (to-hiccup [node]

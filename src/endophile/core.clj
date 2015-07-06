@@ -130,10 +130,10 @@
 
 (extend-type HtmlBlockNode AstToClj
   (to-clj [node]
-    (html/html-snippet (tidy (.getText node)))))
+    (html/html-snippet (.getText node))))
 
 (extend-type InlineHtmlNode AstToClj
-  (to-clj [node] (html/html-snippet (tidy (.getText node)))))
+  (to-clj [node] (html/html-snippet (.getText node))))
 
 
 (extend-type MailLinkNode AstToClj
