@@ -12,13 +12,56 @@
             ReferenceNode StrikeNode]
            [org.pegdown PegDownProcessor Extensions]))
 
- (defn mp [md] (.parseMarkdown
-                (PegDownProcessor. (int
-                                    (bit-or
-                                     Extensions/AUTOLINKS
-                                     Extensions/FENCED_CODE_BLOCKS
-                                     Extensions/STRIKETHROUGH)))
-                (char-array md)))
+;; See https://github.com/sirthias/pegdown/blob/master/src/main/java/org/pegdown/Extensions.java
+;; for descriptions
+(def extensions
+  {:smarts               Extensions/SMARTS
+   :quotes               Extensions/QUOTES
+   :smartypants          Extensions/SMARTYPANTS
+   :abbreviations        Extensions/ABBREVIATIONS
+   :hardwraps            Extensions/HARDWRAPS
+   :autolinks            Extensions/AUTOLINKS
+   :tables               Extensions/TABLES
+   :definitions          Extensions/DEFINITIONS
+   :fenced-code-blocks   Extensions/FENCED_CODE_BLOCKS
+   :wikilinks            Extensions/WIKILINKS
+   :strikethrough        Extensions/STRIKETHROUGH
+   :anchorlinks          Extensions/ANCHORLINKS
+   :all                  Extensions/ALL
+   :suppress-html-blocks Extensions/SUPPRESS_HTML_BLOCKS
+   :supress-all-html     Extensions/SUPPRESS_ALL_HTML})
+
+(defn- bit-or'
+  "Bit-or which works if only one argument is given."
+  [& xs]
+  (if (seq (rest xs))
+    (apply bit-or xs)
+    (first xs)))
+
+(defn extensions-map->int [opts]
+  (->> opts
+       (merge {:autolinks true
+               :strikethrough true
+               :fenced-code-blocks true})
+       (filter val)
+       keys
+       (map extensions)
+       (apply bit-or')
+       int))
+
+(defn mp
+  "Parses given markdown.
+
+   Second (optional) parameter is options map.
+
+   Available options:
+   - :extensions - Map of extensions to enable or disable. Check
+     endophile.core/extensions for available extensions."
+  ([md] (mp md {}))
+  ([md opts]
+   (.parseMarkdown
+     (PegDownProcessor. (extensions-map->int (:extensions opts)))
+     (char-array md))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

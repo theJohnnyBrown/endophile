@@ -6,7 +6,21 @@
         [hiccup.core :only [html]])
   (:require [clojure.string :as str]
             [net.cgrand.enlive-html :as html]
-            [endophile.hiccup :as md2h]))
+            [endophile.hiccup :as md2h])
+  (:import [org.pegdown Extensions]))
+
+(def default-extensions (bit-or Extensions/AUTOLINKS Extensions/FENCED_CODE_BLOCKS Extensions/STRIKETHROUGH))
+
+(deftest extensions-test
+  (testing "default extensions"
+    (is (= default-extensions
+           (extensions-map->int {}))))
+  (testing "disabling defaults"
+    (is (= (bit-and-not default-extensions Extensions/FENCED_CODE_BLOCKS Extensions/STRIKETHROUGH)
+           (extensions-map->int {:fenced-code-blocks false
+                                 :strikethrough false}))))
+  (is (= (bit-or default-extensions Extensions/SMARTS)
+         (extensions-map->int {:smarts true}))))
 
 (def test-files-dir "test/resources/")
 (defn markdown-files [files]
@@ -50,3 +64,7 @@
              :content
              ["List " {:tag :a, :attrs {:href "link"}, :content ["item"]}]}]}
           ""])))
+
+(deftest mp-options
+  (is (= [{:tag :p :content ["~" "~" "foo" "~" "~"]}]
+         (to-clj (mp "~~foo~~" {:extensions {:strikethrough false}})))))
