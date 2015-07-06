@@ -23,14 +23,12 @@
          (extensions-map->int {:smarts true}))))
 
 (def test-files-dir "test/resources/")
-(defn markdown-files [files]
-  (filter
-   (fn [ff] (= (subs (.getName ff) (- (count (.getName ff)) 4)) "text"))
-   files))
+
 (def markdown-spec-files
-  (for [md-file (-> test-files-dir file .listFiles markdown-files)]
-    (let [md-file (.getPath md-file)]
-      [md-file (str/replace md-file ".text" ".html")])))
+  (->> (file-seq (file test-files-dir))
+       (map #(.getPath %))
+       (filter #(re-find #"\.text$" %))
+       (map (fn [path] [path (str/replace path #"\.text$" ".html")]))))
 
 (defn parsed= [& html-strings]
   (apply = (map html/html-snippet html-strings)))
