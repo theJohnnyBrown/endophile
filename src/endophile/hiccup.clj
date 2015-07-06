@@ -8,7 +8,7 @@
             ExpLinkNode HeaderNode HtmlBlockNode InlineHtmlNode MailLinkNode
             OrderedListNode ParaNode QuotedNode QuotedNode$Type SimpleNode
             SimpleNode$Type SpecialTextNode StrongEmphSuperNode VerbatimNode
-            ReferenceNode StrikeNode]))
+            ReferenceNode StrikeNode AnchorLinkNode]))
 
 (defn- sequential-but-not-vector? [s]
   (and (sequential? s) (not (vector? s))))
@@ -144,6 +144,10 @@
 (extend-type StrikeNode AstToHiccup
   (to-hiccup [node]
     (vec (cons :del (clj-contents node)))))
+
+(extend-type AnchorLinkNode AstToHiccup
+  (to-hiccup [node]
+    (vector :a {:name (.getName node) :href (str "#" (.getName node))} (xml-str (.getText node)))))
 
 (extend-type VerbatimNode AstToHiccup
   (to-hiccup [node]

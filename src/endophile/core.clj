@@ -8,7 +8,7 @@
             ExpLinkNode HeaderNode HtmlBlockNode InlineHtmlNode MailLinkNode
             OrderedListNode ParaNode QuotedNode QuotedNode$Type SimpleNode
             SimpleNode$Type SpecialTextNode StrongEmphSuperNode VerbatimNode
-            ReferenceNode StrikeNode]
+            ReferenceNode StrikeNode AnchorLinkNode]
            [org.pegdown PegDownProcessor Extensions]))
 
 ;; See https://github.com/sirthias/pegdown/blob/master/src/main/java/org/pegdown/Extensions.java
@@ -184,6 +184,13 @@
   (to-clj [node]
     {:tag :del
      :content (clj-contents node)}))
+
+(extend-type AnchorLinkNode AstToClj
+  (to-clj [node]
+    {:tag :a
+     :attrs {:name (.getName node)
+             :href (str "#" (.getName node))}
+     :content (list (.getText node))}))
 
 (extend-type VerbatimNode AstToClj
   (to-clj [node]
