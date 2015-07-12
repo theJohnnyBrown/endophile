@@ -1,23 +1,66 @@
 (ns endophile.core
   (:require [net.cgrand.enlive-html :as html]
-            [clojure.string :as str])
-  (:use clojure.pprint
-        endophile.utils)
+            [clojure.string :as str]
+            [endophile.utils :refer :all])
   (:import [org.pegdown.ast
             RootNode BulletListNode ListItemNode SuperNode TextNode RefLinkNode
-            AutoLinkNode BlockQuoteNode CodeNode TextNode EmphNode ExpImageNode
+            AutoLinkNode BlockQuoteNode CodeNode TextNode ExpImageNode
             ExpLinkNode HeaderNode HtmlBlockNode InlineHtmlNode MailLinkNode
             OrderedListNode ParaNode QuotedNode QuotedNode$Type SimpleNode
-            SimpleNode$Type SpecialTextNode StrongNode VerbatimNode
-            ReferenceNode]
+            SimpleNode$Type SpecialTextNode StrongEmphSuperNode VerbatimNode
+            ReferenceNode StrikeNode]
            [org.pegdown PegDownProcessor Extensions]))
 
- (defn mp [md] (.parseMarkdown
-                (PegDownProcessor. (int
-                                    (bit-or
-                                     Extensions/AUTOLINKS
-                                     Extensions/FENCED_CODE_BLOCKS)))
-                (char-array md)))
+;; See https://github.com/sirthias/pegdown/blob/master/src/main/java/org/pegdown/Extensions.java
+;; for descriptions
+(def extensions
+  {:smarts               Extensions/SMARTS
+   :quotes               Extensions/QUOTES
+   :smartypants          Extensions/SMARTYPANTS
+   :abbreviations        Extensions/ABBREVIATIONS
+   :hardwraps            Extensions/HARDWRAPS
+   :autolinks            Extensions/AUTOLINKS
+   :tables               Extensions/TABLES
+   :definitions          Extensions/DEFINITIONS
+   :fenced-code-blocks   Extensions/FENCED_CODE_BLOCKS
+   :wikilinks            Extensions/WIKILINKS
+   :strikethrough        Extensions/STRIKETHROUGH
+   :anchorlinks          Extensions/ANCHORLINKS
+   :all                  Extensions/ALL
+   :suppress-html-blocks Extensions/SUPPRESS_HTML_BLOCKS
+   :supress-all-html     Extensions/SUPPRESS_ALL_HTML})
+
+(defn- bit-or'
+  "Bit-or which works if only one argument is given."
+  [& xs]
+  (if (seq (rest xs))
+    (apply bit-or xs)
+    (first xs)))
+
+(defn extensions-map->int [opts]
+  (->> opts
+       (merge {:autolinks true
+               :strikethrough true
+               :fenced-code-blocks true})
+       (filter val)
+       keys
+       (map extensions)
+       (apply bit-or')
+       int))
+
+(defn mp
+  "Parses given markdown.
+
+   Second (optional) parameter is options map.
+
+   Available options:
+   - :extensions - Map of extensions to enable or disable. Check
+     endophile.core/extensions for available extensions."
+  ([md] (mp md {}))
+  ([md opts]
+   (.parseMarkdown
+     (PegDownProcessor. (extensions-map->int (:extensions opts)))
+     (char-array md))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -68,10 +111,6 @@
   (to-clj [node] {:tag :code
                   :content (list (.getText node))}))
 
-(extend-type EmphNode AstToClj
-  (to-clj [node] {:tag :em
-                  :content (clj-contents node)}))
-
 (extend-type ExpImageNode AstToClj
   (to-clj [node] {:tag :img
                   :attrs (a-attrs
@@ -91,10 +130,10 @@
 
 (extend-type HtmlBlockNode AstToClj
   (to-clj [node]
-    (html/html-snippet (tidy (.getText node)))))
+    (html/html-snippet (.getText node))))
 
 (extend-type InlineHtmlNode AstToClj
-  (to-clj [node] (html/html-snippet (tidy (.getText node)))))
+  (to-clj [node] (html/html-snippet (.getText node))))
 
 
 (extend-type MailLinkNode AstToClj
@@ -137,9 +176,14 @@
 (extend-type SpecialTextNode AstToClj
   (to-clj [node] (.getText node)))
 
-(extend-type StrongNode AstToClj
-  (to-clj [node] {:tag :strong
+(extend-type StrongEmphSuperNode AstToClj
+  (to-clj [node] {:tag (if (.isStrong node) :strong :em)
                   :content (clj-contents node)}))
+
+(extend-type StrikeNode AstToClj
+  (to-clj [node]
+    {:tag :del
+     :content (clj-contents node)}))
 
 (extend-type VerbatimNode AstToClj
   (to-clj [node]

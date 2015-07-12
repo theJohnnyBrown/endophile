@@ -1,15 +1,14 @@
 (ns endophile.hiccup
   (:require [net.cgrand.enlive-html :as html]
-            [clojure.string :as str])
-  (:use endophile.utils)
+            [clojure.string :as str]
+            [endophile.utils :refer :all])
   (:import [org.pegdown.ast
             RootNode BulletListNode ListItemNode SuperNode TextNode RefLinkNode
-            AutoLinkNode BlockQuoteNode CodeNode TextNode EmphNode ExpImageNode
+            AutoLinkNode BlockQuoteNode CodeNode TextNode ExpImageNode
             ExpLinkNode HeaderNode HtmlBlockNode InlineHtmlNode MailLinkNode
             OrderedListNode ParaNode QuotedNode QuotedNode$Type SimpleNode
-            SimpleNode$Type SpecialTextNode StrongNode VerbatimNode
-            ReferenceNode]
-           [org.pegdown PegDownProcessor Extensions]))
+            SimpleNode$Type SpecialTextNode StrongEmphSuperNode VerbatimNode
+            ReferenceNode StrikeNode]))
 
 (defn- sequential-but-not-vector? [s]
   (and (sequential? s) (not (vector? s))))
@@ -75,10 +74,6 @@
   (to-hiccup [node]
     [:code (verbatim-xml-str (.getText node))]))
 
-(extend-type EmphNode AstToHiccup
-  (to-hiccup [node]
-    (vec (cons :em (clj-contents node)))))
-
 (extend-type ExpImageNode AstToHiccup
   (to-hiccup [node]
     [:img {:src (.url node) :title (.title node) :alt (apply str (clj-contents node))}]))
@@ -97,11 +92,11 @@
 
 (extend-type HtmlBlockNode AstToHiccup
   (to-hiccup [node]
-    (html-snippet (tidy (.getText node)))))
+    (html-snippet (.getText node))))
 
 (extend-type InlineHtmlNode AstToHiccup
   (to-hiccup [node]
-    (html-snippet (tidy (.getText node)))))
+    (html-snippet (.getText node))))
 
 (extend-type MailLinkNode AstToHiccup
   (to-hiccup [node]
@@ -142,9 +137,13 @@
 (extend-type SpecialTextNode AstToHiccup
   (to-hiccup [node] (xml-str (.getText node))))
 
-(extend-type StrongNode AstToHiccup
+(extend-type StrongEmphSuperNode AstToHiccup
   (to-hiccup [node]
-    (vec (cons :strong (clj-contents node)))))
+    (vec (cons (if (.isStrong node) :strong :em) (clj-contents node)))))
+
+(extend-type StrikeNode AstToHiccup
+  (to-hiccup [node]
+    (vec (cons :del (clj-contents node)))))
 
 (extend-type VerbatimNode AstToHiccup
   (to-hiccup [node]
