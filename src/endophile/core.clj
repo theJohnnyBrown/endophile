@@ -8,7 +8,7 @@
             ExpLinkNode HeaderNode HtmlBlockNode InlineHtmlNode MailLinkNode
             OrderedListNode ParaNode QuotedNode QuotedNode$Type SimpleNode
             SimpleNode$Type SpecialTextNode StrongEmphSuperNode VerbatimNode
-            ReferenceNode StrikeNode]
+            ReferenceNode StrikeNode AnchorLinkNode]
            [org.pegdown PegDownProcessor Extensions]))
 
 ;; See https://github.com/sirthias/pegdown/blob/master/src/main/java/org/pegdown/Extensions.java
@@ -28,7 +28,14 @@
    :anchorlinks          Extensions/ANCHORLINKS
    :all                  Extensions/ALL
    :suppress-html-blocks Extensions/SUPPRESS_HTML_BLOCKS
-   :supress-all-html     Extensions/SUPPRESS_ALL_HTML})
+   :supress-all-html     Extensions/SUPPRESS_ALL_HTML
+   :atxheaderspace       Extensions/ATXHEADERSPACE
+   :forcelistitempara    Extensions/FORCELISTITEMPARA
+   :relaxedhrules        Extensions/RELAXEDHRULES
+   :tasklistitems        Extensions/TASKLISTITEMS
+   :extanchorlinks       Extensions/EXTANCHORLINKS
+   :all-optionals        Extensions/ALL_OPTIONALS
+   :all-with-optionals   Extensions/ALL_WITH_OPTIONALS})
 
 (defn- bit-or'
   "Bit-or which works if only one argument is given."
@@ -139,7 +146,7 @@
 (extend-type MailLinkNode AstToClj
   (to-clj [node] {:tag :a
                   :attrs (a-attrs {:href (str "mailto:" (.getText node))})
-                  :content (clj-contents node)}))
+                  :content (list (.getText node))}))
 
 (extend-type OrderedListNode AstToClj
   (to-clj [node] {:tag :ol
@@ -184,6 +191,13 @@
   (to-clj [node]
     {:tag :del
      :content (clj-contents node)}))
+
+(extend-type AnchorLinkNode AstToClj
+  (to-clj [node]
+    {:tag :a
+     :attrs {:name (.getName node)
+             :href (str "#" (.getName node))}
+     :content (list (.getText node))}))
 
 (extend-type VerbatimNode AstToClj
   (to-clj [node]
