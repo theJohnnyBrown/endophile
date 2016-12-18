@@ -101,7 +101,7 @@
 (extend-type MailLinkNode AstToHiccup
   (to-hiccup [node]
     (vec (concat [:a {:href (str "mailto:" (.getText node))}]
-                 (clj-contents node)))))
+                 (list (.getText node))))))
 
 (extend-type OrderedListNode AstToHiccup
   (to-hiccup [node]

@@ -74,5 +74,9 @@
 (deftest email-test
   (is (= [{:tag :p, :content [{:tag :a, :attrs {:href "mailto:juho@metosin.fi"}, :content ["juho@metosin.fi"]}]}]
          (to-clj (mp "<juho@metosin.fi>"))))
+  (is (= [[:p [:a {:href "mailto:juho@metosin.fi"} "juho@metosin.fi"]]]
+         (md2h/to-hiccup (mp "<juho@metosin.fi>"))))
   (is (= [{:tag :p, :content [{:tag :a, :attrs {:href "mailto:juho@metosin.fi"}, :content ["juho@metosin.fi"]}]}]
-         (to-clj (mp "juho@metosin.fi")))))
+         (to-clj (mp "juho@metosin.fi"))))
+  (is (= [[:p [:a {:href "mailto:juho@metosin.fi"} "juho@metosin.fi"]]]
+         (md2h/to-hiccup (mp "juho@metosin.fi")))) )
