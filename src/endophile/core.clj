@@ -146,7 +146,7 @@
 (extend-type MailLinkNode AstToClj
   (to-clj [node] {:tag :a
                   :attrs (a-attrs {:href (str "mailto:" (.getText node))})
-                  :content (clj-contents node)}))
+                  :content (list (.getText node))}))
 
 (extend-type OrderedListNode AstToClj
   (to-clj [node] {:tag :ol

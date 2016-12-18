@@ -70,3 +70,9 @@
          (to-clj (mp "# Foo" {:extensions {:anchorlinks true}}))))
   (is (= [[:h1 [:a {:name "foo" :href "#foo"} "Foo"]]]
          (md2h/to-hiccup (mp "# Foo" {:extensions {:anchorlinks true}})))))
+
+(deftest email-test
+  (is (= [{:tag :p, :content [{:tag :a, :attrs {:href "mailto:juho@metosin.fi"}, :content ["juho@metosin.fi"]}]}]
+         (to-clj (mp "<juho@metosin.fi>"))))
+  (is (= [{:tag :p, :content [{:tag :a, :attrs {:href "mailto:juho@metosin.fi"}, :content ["juho@metosin.fi"]}]}]
+         (to-clj (mp "juho@metosin.fi")))))
