@@ -1,7 +1,9 @@
 (ns endophile.utils
   (:require [clojure.string :as str]
             [net.cgrand.enlive-html :as html]
-            [clojure.walk :as walk]))
+            [clojure.walk :as walk])
+  (:import [org.pegdown.ast
+            TableColumnNode$Alignment]))
 
 (defn a-attrs [mapping]
   (into {} (filter (fn [[k v]] (or (not (str/blank? v)) (= k :href))) mapping)))
@@ -44,3 +46,43 @@
         (seq? x) (into (empty x) (remove #{""} x))
         :else x))
     enlive-html))
+
+;;
+;; Table columns
+;;
+
+(defn- assoc-column [columns context index]
+  (assoc context :column (.get columns index)))
+
+(defn- column-indices [node]
+  (reductions + 0
+              (map #(.getColSpan %)
+                   (butlast (.getChildren node)))))
+
+(defn- contexts-with-columns [node context]
+  (let [columns (:table-columns context)]
+
+    (map (partial assoc-column columns)
+         (repeat context)
+         (column-indices node))))
+
+(defn table-row-contents [flatten-fn transform-with-context node context]
+  (doall (flatten-fn (map transform-with-context
+                          (seq (.getChildren node))
+                          (contexts-with-columns node context)))))
+
+(def column-alignment
+  {TableColumnNode$Alignment/Left   "left"
+   TableColumnNode$Alignment/Right  "right"
+   TableColumnNode$Alignment/Center "center"})
+
+;;
+;; References
+;;
+
+(defn add-references [context contents-fn references]
+  (assoc context :references
+         (merge (:references context)
+                (into {}
+                      (for [ref references]
+                        [(first (contents-fn ref context)) ref])))))
