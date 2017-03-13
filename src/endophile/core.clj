@@ -8,7 +8,9 @@
             ExpLinkNode HeaderNode HtmlBlockNode InlineHtmlNode MailLinkNode
             OrderedListNode ParaNode QuotedNode QuotedNode$Type SimpleNode
             SimpleNode$Type SpecialTextNode StrongEmphSuperNode VerbatimNode
-            ReferenceNode StrikeNode AnchorLinkNode]
+            ReferenceNode StrikeNode AnchorLinkNode TableNode
+            TableHeaderNode TableBodyNode TableRowNode TableCellNode
+            TableColumnNode TableColumnNode$Alignment TableCaptionNode]
            [org.pegdown PegDownProcessor Extensions]))
 
 ;; See https://github.com/sirthias/pegdown/blob/master/src/main/java/org/pegdown/Extensions.java
@@ -73,88 +75,98 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Methods return clojure representation of HTML nodes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(declare ^:dynamic *references*)
 
 (defprotocol AstToClj
-  (to-clj [node]))
+  (to-clj-with-context [node context]))
 
-(defn clj-contents [node]
-  (doall (flatten (map to-clj (seq (.getChildren node))))))
+(defn to-clj [node]
+  (to-clj-with-context node {}))
+
+(defn clj-contents [node context]
+  (doall (flatten (map #(to-clj-with-context % context)
+                       (seq (.getChildren node))))))
 
 (extend-type SuperNode AstToClj
-  (to-clj [node] (clj-contents node)))
+  (to-clj-with-context [node context]
+    (clj-contents node context)))
 
 (extend-type RootNode AstToClj
-  (to-clj [node]
-    (if (bound? #'*references*)
-      (clj-contents node)
-      (binding [*references*
-                (into {}
-                      (for [ref (.getReferences node)]
-                        [(first (clj-contents ref)) ref]))]
-        (clj-contents node)))))
+  (to-clj-with-context [node context]
+    (clj-contents node (add-references context
+                                       clj-contents
+                                       (.getReferences node)) )))
 
 (extend-type BulletListNode AstToClj
-  (to-clj [node] {:tag :ul
-                  :content (clj-contents node)}))
+  (to-clj-with-context [node context]
+    {:tag :ul
+     :content (clj-contents node context)}))
 
 (extend-type ListItemNode AstToClj
-  (to-clj [node] {:tag :li :content (clj-contents node)}))
+  (to-clj-with-context [node context]
+    {:tag :li :content (clj-contents node context)}))
 
 (extend-type TextNode AstToClj
   ;; html-snippet converts entities back into text
-  (to-clj [node] (first (html/html-snippet (.getText node)))))
+  (to-clj-with-context [node _] (first (html/html-snippet (.getText node)))))
 
 (extend-type AutoLinkNode AstToClj
-  (to-clj [node] {:tag :a
-                  :attrs (a-attrs {:href (.getText node)})
-                  :content (list (.getText node))}))
+  (to-clj-with-context [node _]
+    {:tag :a
+     :attrs (a-attrs {:href (.getText node)})
+     :content (list (.getText node))}))
 
 (extend-type BlockQuoteNode AstToClj
-  (to-clj [node] {:tag :blockquote
-                  :content (clj-contents node)}))
+  (to-clj-with-context [node context]
+    {:tag :blockquote
+     :content (clj-contents node context)}))
 
 (extend-type CodeNode AstToClj
-  (to-clj [node] {:tag :code
-                  :content (list (.getText node))}))
+  (to-clj-with-context [node _]
+    {:tag :code
+     :content (list (.getText node))}))
 
 (extend-type ExpImageNode AstToClj
-  (to-clj [node] {:tag :img
-                  :attrs (a-attrs
-                          {:src (.url node)
-                           :title (.title node)
-                           :alt (str/join (clj-contents node))})}))
+  (to-clj-with-context [node context]
+    {:tag :img
+     :attrs (a-attrs
+             {:src (.url node)
+              :title (.title node)
+              :alt (str/join (clj-contents node context))})}))
 
 (extend-type ExpLinkNode AstToClj
-  (to-clj [node] {:tag :a
-                  :attrs (a-attrs {:href (.url node) :title (.title node)})
-                  :content (clj-contents node)}))
+  (to-clj-with-context [node context]
+    {:tag :a
+     :attrs (a-attrs {:href (.url node) :title (.title node)})
+     :content (clj-contents node context)}))
 
 (extend-type HeaderNode AstToClj
-  (to-clj [node] {:tag (keyword (str "h" (.getLevel node)))
-                  :content (clj-contents node)}))
+  (to-clj-with-context [node context]
+    {:tag (keyword (str "h" (.getLevel node)))
+     :content (clj-contents node context)}))
 
 
 (extend-type HtmlBlockNode AstToClj
-  (to-clj [node]
+  (to-clj-with-context [node _]
     (html/html-snippet (.getText node))))
 
 (extend-type InlineHtmlNode AstToClj
-  (to-clj [node] (html/html-snippet (.getText node))))
+  (to-clj-with-context [node _] (html/html-snippet (.getText node))))
 
 
 (extend-type MailLinkNode AstToClj
-  (to-clj [node] {:tag :a
-                  :attrs (a-attrs {:href (str "mailto:" (.getText node))})
-                  :content (list (.getText node))}))
+  (to-clj-with-context [node _] {:tag :a
+                    :attrs (a-attrs {:href (str "mailto:" (.getText node))})
+                    :content (list (.getText node))}))
 
 (extend-type OrderedListNode AstToClj
-  (to-clj [node] {:tag :ol
-                  :content (clj-contents node)}))
+  (to-clj-with-context [node context]
+    {:tag :ol
+     :content (clj-contents node context)}))
 
 (extend-type ParaNode AstToClj
-  (to-clj [node] {:tag :p
-                  :content (clj-contents node)}))
+  (to-clj-with-context [node context]
+    {:tag :p
+     :content (clj-contents node context)}))
 
 (def qts
   {QuotedNode$Type/DoubleAngle [\u00AB \u00BB]
@@ -162,10 +174,11 @@
    QuotedNode$Type/Single [\u2018 \u2019]})
 
 (extend-type QuotedNode AstToClj
-  (to-clj [node] {:tag :p
-                  :content (flatten
-                            (let [q (qts (.getType node))]
-                              (list (q 0) (clj-contents node) (q 1))))}))
+  (to-clj-with-context [node context]
+    {:tag :p
+     :content (flatten
+               (let [q (qts (.getType node))]
+                 (list (q 0) (clj-contents node context) (q 1))))}))
 
 (def simple-nodes
   {SimpleNode$Type/Apostrophe \'
@@ -177,30 +190,31 @@
    SimpleNode$Type/Nbsp \u00A0})
 
 (extend-type SimpleNode AstToClj
-  (to-clj [node] (simple-nodes (.getType node))))
+  (to-clj-with-context [node _] (simple-nodes (.getType node))))
 
 
 (extend-type SpecialTextNode AstToClj
-  (to-clj [node] (.getText node)))
+  (to-clj-with-context [node _] (.getText node)))
 
 (extend-type StrongEmphSuperNode AstToClj
-  (to-clj [node] {:tag (if (.isStrong node) :strong :em)
-                  :content (clj-contents node)}))
+  (to-clj-with-context [node context]
+    {:tag (if (.isStrong node) :strong :em)
+     :content (clj-contents node context)}))
 
 (extend-type StrikeNode AstToClj
-  (to-clj [node]
+  (to-clj-with-context [node context]
     {:tag :del
-     :content (clj-contents node)}))
+     :content (clj-contents node context)}))
 
 (extend-type AnchorLinkNode AstToClj
-  (to-clj [node]
+  (to-clj-with-context [node _]
     {:tag :a
      :attrs {:name (.getName node)
              :href (str "#" (.getName node))}
      :content (list (.getText node))}))
 
 (extend-type VerbatimNode AstToClj
-  (to-clj [node]
+  (to-clj-with-context [node _]
     {:tag :pre
      :content (list (merge {:tag :code
                             :content (list (.getText node))}
@@ -210,23 +224,82 @@
                                {:attrs {:class c}}))))}))
 
 (extend-type RefLinkNode AstToClj
-  (to-clj [node]
-    (let [contents (clj-contents node)
+  (to-clj-with-context [node context]
+    (let [contents (clj-contents node context)
           key (if-let [nd (.referenceKey node)]
-                (first (to-clj nd)) (apply str contents))]
-     (if-let [ref (*references* key)]
-       {:tag :a :attrs (a-attrs {:href (.getUrl ref) :title (.getTitle ref)})
-        :content contents}
-       (cons "[" (concat contents
-                         (if (.separatorSpace node)
-                             [(str "]"
-                                   (.separatorSpace node)
-                                   "[" (.referenceKey node) "]")]
-                             ["]"])))))))
+                (first (to-clj-with-context nd context))
+                (apply str contents))]
+      (if-let [ref ((:references context) key)]
+        {:tag :a :attrs (a-attrs {:href (.getUrl ref) :title (.getTitle ref)})
+         :content contents}
+        (cons "[" (concat contents
+                          (if (.separatorSpace node)
+                            [(str "]"
+                                  (.separatorSpace node)
+                                  "[" (.referenceKey node) "]")]
+                            ["]"])))))))
 
 (extend-type ReferenceNode AstToClj
-  (to-clj [node]
+  (to-clj-with-context [node _]
     ""))
+
+(extend-type TableNode AstToClj
+  (to-clj-with-context [node context]
+    {:tag :table
+     :content (clj-contents node
+                            (assoc context :table-columns
+                                   (.getColumns node)))}))
+
+(extend-type TableHeaderNode AstToClj
+  (to-clj-with-context [node context]
+    {:tag :thead
+     :content (clj-contents node (assoc context :in-header true))}))
+
+(extend-type TableBodyNode AstToClj
+  (to-clj-with-context [node context]
+    {:tag :tbody
+     :content (clj-contents node (assoc context :in-header false))}))
+
+(defn- assoc-column [columns context index]
+  (assoc context :column (.get columns index)))
+
+(defn- column-indices [node]
+  (reductions + 0
+              (map #(.getColSpan %)
+                   (butlast (.getChildren node)))))
+
+(defn- contexts-with-columns [node context]
+  (let [columns (:table-columns context)]
+
+    (map (partial assoc-column columns)
+         (repeat context)
+         (column-indices node))))
+
+(extend-type TableRowNode AstToClj
+  (to-clj-with-context [node context]
+    {:tag :tr
+     :content (table-row-contents flatten
+                                  to-clj-with-context
+                                  node context)}))
+
+(extend-type TableCellNode AstToClj
+  (to-clj-with-context [node context]
+    (let [alignment (.getAlignment (:column context))
+          attrs (merge {}
+                       (when (> (.getColSpan node) 1)
+                         {:colspan (.getColSpan node)})
+                       (when (not= alignment
+                                   TableColumnNode$Alignment/None)
+                         {:alignment (column-alignment alignment)}))]
+      (merge {:tag (if (:in-header context) :th :td)
+              :content (clj-contents node context)}
+             (when (not (empty? attrs))
+               {:attrs attrs})))))
+
+(extend-type TableCaptionNode AstToClj
+  (to-clj-with-context [node context]
+    {:tag :caption
+     :content (clj-contents node context)}))
 
 (defn html-string [clj-md]
   (str/join (html/emit* clj-md)))
