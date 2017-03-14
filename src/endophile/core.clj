@@ -260,21 +260,6 @@
     {:tag :tbody
      :content (clj-contents node (assoc context :in-header false))}))
 
-(defn- assoc-column [columns context index]
-  (assoc context :column (.get columns index)))
-
-(defn- column-indices [node]
-  (reductions + 0
-              (map #(.getColSpan %)
-                   (butlast (.getChildren node)))))
-
-(defn- contexts-with-columns [node context]
-  (let [columns (:table-columns context)]
-
-    (map (partial assoc-column columns)
-         (repeat context)
-         (column-indices node))))
-
 (extend-type TableRowNode AstToClj
   (to-clj-with-context [node context]
     {:tag :tr
