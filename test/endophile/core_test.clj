@@ -7,7 +7,8 @@
             [net.cgrand.enlive-html :as html]
             [endophile.hiccup :as md2h]
             [endophile.utils :refer :all])
-  (:import [org.pegdown Extensions]))
+  (:import [org.pegdown Extensions]
+           (org.parboiled.errors ParserRuntimeException)))
 
 (def default-extensions (bit-or Extensions/AUTOLINKS Extensions/FENCED_CODE_BLOCKS Extensions/STRIKETHROUGH))
 
@@ -191,3 +192,8 @@
                [:td {:alignment "center"} "J "]]]
              [:caption "Caption"]]]
            (md2h/to-hiccup column-md)))))
+
+(deftest timeout-test
+  (is (thrown? ParserRuntimeException (mp "_fail_" {} 0) "ParsingTimeoutException"))
+  (is (= [[:p [:em "fast enough"]]]
+         (md2h/to-hiccup (mp "_fast enough_" {} 5000)))))

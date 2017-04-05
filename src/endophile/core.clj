@@ -62,13 +62,17 @@
 
    Second (optional) parameter is options map.
 
+   Third (optional) parameter is parsing timeout in milliseconds (pegdown default: 2000 ms).
+
    Available options:
    - :extensions - Map of extensions to enable or disable. Check
      endophile.core/extensions for available extensions."
   ([md] (mp md {}))
   ([md opts]
+   (mp md opts PegDownProcessor/DEFAULT_MAX_PARSING_TIME))
+  ([md opts ^Long timeout]
    (.parseMarkdown
-     (PegDownProcessor. (extensions-map->int (:extensions opts)))
+     (PegDownProcessor. (extensions-map->int (:extensions opts)) timeout)
      (char-array md))))
 
 
