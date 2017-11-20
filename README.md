@@ -45,6 +45,18 @@ There is also an implementation that returns hiccup-style vectors. See hiccup.cl
 
 Currently does not support the full complement of extensions available through pegdown. Pull requests are encouraged.
 
+## FAQ
+
+### `asm-all` dependency
+
+If you use some other libraries that use old versions of `org.ow2.asm/asm-all` (like Figwheel) it is possible you'll encounter error like:
+
+```
+IllegalArgumentException   org.objectweb.asm.MethodVisitor.<init> (:-1)
+```
+
+You can check if you have old `asm` version by checking `lein deps :tree` or `boot show -d`. To fix this problem you can add `asm-all` dependency to your project. Local dependency will override transitive dependencies. Another solution would be to add `:exclusions` to the other dependency.
+
 ## License
 
 Copyright © 2013 Jonathan Brown
