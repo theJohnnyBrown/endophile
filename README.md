@@ -1,6 +1,8 @@
 # endophile
 
-[![Build Status](https://secure.travis-ci.org/theJohnnyBrown/endophile.png)](http://travis-ci.org/theJohnnyBrown/endophile)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/thejohnnybrown/endophile/master/endophile.webp" alt="A Cozy Indoor Scene">
+</p>
 
 A Clojure markdown parsing tool wrapping java's [pegdown](https://github.com/sirthias/pegdown) library. It is designed to convert markdown into clojure data structures, which can then be used to generate HTML through another library, such as enlive or hiccup.
 
